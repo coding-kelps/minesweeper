@@ -1,41 +1,32 @@
-// enum Status {
-//     Nothing,
-//     Mine,
-//     NearBomb(u8),
-// }
+enum Status {
+    Nothing,
+    Mine,
+    NearBomb(u8),
+}
 
-// struct Cell {
-//     status: Status,
-//     discovered: bool,
-// }
+struct Cell {
+    status: Status,
+    discovered: bool,
+}
 
-// type Grid = Vec<Vec<Cell>>;
+pub struct Grid {
+    grid: Vec<Vec<Cell>>,
+    dimensions: (u8, u8),
+}
 
 use std::fmt;
 
-pub struct Grid {
-    rows: Vec<Vec<char>>,
-}
-
-impl From<String> for Grid {
-    fn from(s: String) -> Self {
-        let mut rows = Vec::new();
-        for line in s.lines() {
-            let row = line.chars().collect();
-            rows.push(row);
-        }
-        Grid { rows }
+impl Grid {
+    fn new() -> Self {
     }
 }
 
-impl fmt::Display for Grid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for row in &self.rows {
-            for c in row {
-                write!(f, "{}", c)?;
-            }
-            write!(f, "\n")?;
-        }
-        Ok(())
-    }
-}
+// impl From<String> for Grid {
+//     fn from(s: String) -> Self {
+//     }
+// }
+
+// impl fmt::Display for Grid {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//     }
+// }
