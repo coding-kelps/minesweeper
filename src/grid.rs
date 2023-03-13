@@ -1,21 +1,32 @@
 use rand::Rng;
 use std::fmt;
 
-#[derive(Clone, PartialEq)]
-pub enum Status {
-    Nothing,
-    Mine,
-    NearMine(u8),
-}
+mod cell {
+    #[derive(Clone, PartialEq)]
+    pub enum Status {
+        Nothing,
+        Mine,
+        NearMine(u8),
+    }
 
-#[derive(Clone)]
-pub struct Cell {
-    status: Status,
-    discovered: bool,
+    #[derive(Clone)]
+    pub struct Cell {
+        pub status: Status,
+        pub discovered: bool,
+    }
+
+    impl Cell {
+        pub fn new() -> Self {
+            Cell {
+                status: Status::Nothing,
+                discovered: false,
+            }
+        }
+    }
 }
 
 pub struct Grid {
-    rows: Vec<Vec<Cell>>,
+    rows: Vec<Vec<cell::Cell>>,
     dimensions: (usize, usize),
 }
 
@@ -24,16 +35,7 @@ static STANDARD_DIMENSIONS: (usize, usize) = (10usize, 10usize);
 impl Grid {
     fn make_empty() -> Self {
         Grid {
-            rows: vec![
-                vec![
-                    Cell {
-                        status: Status::Nothing,
-                        discovered: false
-                    };
-                    STANDARD_DIMENSIONS.1
-                ];
-                STANDARD_DIMENSIONS.0
-            ],
+            rows: vec![vec![cell::Cell::new(); STANDARD_DIMENSIONS.1]; STANDARD_DIMENSIONS.0],
             dimensions: STANDARD_DIMENSIONS,
         }
     }
@@ -45,7 +47,7 @@ impl Grid {
             let rand = rand::thread_rng().gen_range(1..=100);
 
             if rand <= STANDARD_MINE_RATE {
-                cell.status = Status::Mine;
+                cell.status = cell::Status::Mine;
             }
         }
     }
@@ -75,7 +77,7 @@ impl Grid {
                 && checking_position.1 < (self.dimensions.1 as isize)
             {
                 if self.rows[(checking_position.0 as usize)][(checking_position.1 as usize)].status
-                    == Status::Mine
+                    == cell::Status::Mine
                 {
                     nb_mines += 1u8;
                 }
@@ -88,10 +90,10 @@ impl Grid {
         for x in 0..self.dimensions.0 {
             for y in 0..self.dimensions.1 {
                 let nb_mines = self.count_near_mines((x, y));
-                let cell: &mut Cell = &mut self.rows[x][y];
+                let cell: &mut cell::Cell = &mut self.rows[x][y];
 
-                if nb_mines > 0u8 && cell.status != Status::Mine {
-                    cell.status = Status::NearMine(nb_mines);
+                if nb_mines > 0u8 && cell.status != cell::Status::Mine {
+                    cell.status = cell::Status::NearMine(nb_mines);
                 }
             }
         }
@@ -111,9 +113,9 @@ impl Grid {
         for row in &self.rows {
             for cell in row {
                 match cell.status {
-                    Status::Nothing => str.push_str(" "),
-                    Status::Mine => str.push_str("X"),
-                    Status::NearMine(nb_bombs) => match nb_bombs {
+                    cell::Status::Nothing => str.push_str(" "),
+                    cell::Status::Mine => str.push_str("X"),
+                    cell::Status::NearMine(nb_bombs) => match nb_bombs {
                         1..=9 => str.push_str(&nb_bombs.to_string()),
                         _ => str.push_str("?"),
                     },
@@ -131,9 +133,9 @@ impl fmt::Display for Grid {
             for cell in row {
                 if cell.discovered {
                     match cell.status {
-                        Status::Nothing => write!(f, " ")?,
-                        Status::Mine => write!(f, "X")?,
-                        Status::NearMine(nb_bombs) => match nb_bombs {
+                        cell::Status::Nothing => write!(f, " ")?,
+                        cell::Status::Mine => write!(f, "X")?,
+                        cell::Status::NearMine(nb_bombs) => match nb_bombs {
                             1..=9 => write!(f, "{}", nb_bombs)?,
                             _ => write!(f, "?")?,
                         },
