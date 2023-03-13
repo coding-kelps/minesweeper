@@ -4,20 +4,29 @@ use std::fs;
 use std::io::Write;
 
 mod cell {
+    /// The possible status that can have a minesweeper cell
     #[derive(Copy, Clone, PartialEq, Debug)]
     pub enum Status {
+        /// There is no mine on this cell or next to this one
         Nothing,
+        /// There is a mine on this cell
         Mine,
+        /// There is one or multiple mine next to this cell,
+        /// the number of close mine is associated to this Status
         NearMine(u8),
     }
 
+    /// A cell of the minesweeper grid
     #[derive(Copy, Clone, PartialEq, Debug)]
     pub struct Cell {
+        /// The status (or content) of a cell (is there is a mine, nothing, an hints?)
         pub status: Status,
+        /// Does the cell have been discovered by the player
         pub discovered: bool,
     }
 
     impl Cell {
+        /// Returns an empty cell which has not been discovered
         pub fn new() -> Self {
             Cell {
                 status: Status::Nothing,
@@ -27,15 +36,19 @@ mod cell {
     }
 }
 
+/// The minesweeper grid
 #[derive(PartialEq, Debug)]
 pub struct Grid {
+    /// The dimensions of the grid
     dimensions: (usize, usize),
+    /// The grid's rows which themselves each an array of minesweeper cells
     rows: Vec<Vec<cell::Cell>>,
 }
 
 static STANDARD_DIMENSIONS: (usize, usize) = (10usize, 10usize);
 
 impl Grid {
+    /// Returns a 10x10 grid filled of undiscovered and empty cells
     pub fn make_empty() -> Self {
         Grid {
             dimensions: STANDARD_DIMENSIONS,
@@ -43,7 +56,8 @@ impl Grid {
         }
     }
 
-    fn generate_bombs(&mut self) {
+    /// Modify the grid to randomly add mines to it
+    fn generate_mines(&mut self) {
         static STANDARD_MINE_RATE: i32 = 5i32;
 
         for cell in self.rows.iter_mut().flat_map(|row| row.iter_mut()) {
@@ -55,6 +69,24 @@ impl Grid {
         }
     }
 
+    /// Check for a grid position the number of mines next to it.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `position` - The center cell on which all next cells will be checked
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// let debug_str = "\
+    ///                 X**\
+    ///                 ***\
+    ///                 XXX\
+    ///             ";
+    /// let grid = Grid::from_debug_str(debug_str);
+    ///
+    /// let nb_mines = grid.count_near_mines((5, 5));
+    /// ```
     fn count_near_mines(&self, position: (usize, usize)) -> u8 {
         static NEAR_CELL_MODIFIERS: [(isize, isize); 8] = [
             (-1, -1),
@@ -89,6 +121,8 @@ impl Grid {
         nb_mines
     }
 
+    /// Replace each cells which is not a mine and that have a mines next to it
+    /// with the status Status::NearMine(x), with x the number of mines around it 
     fn generate_hints(&mut self) {
         for x in 0..self.dimensions.0 {
             for y in 0..self.dimensions.1 {
@@ -102,14 +136,31 @@ impl Grid {
         }
     }
 
+    /// Returns a 10x10 grid randomly filled of mines and the correspondants hints
     pub fn make_random() -> Self {
         let mut grid = Grid::make_empty();
 
-        grid.generate_bombs();
+        grid.generate_mines();
         grid.generate_hints();
         grid
     }
 
+    /// Returns a grid following a string
+    /// 
+    /// # Arguments
+    /// 
+    /// * `str` - the str from which the grid will be made
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// let debug_str = "\
+    ///                 ***\
+    ///                 *X*\
+    ///                 ***\
+    ///             ";
+    /// let grid = Grid::from_debug_str(debug_str);
+    /// ```
     pub fn from_debug_str(str: &str) -> Self {
         let mut dimensions = (0usize, 0usize);
         let mut rows: Vec<Vec<cell::Cell>> = Vec::new();
@@ -154,18 +205,49 @@ impl Grid {
         }
     }
 
+    /// Returns a grid following a debug file
+    /// 
+    /// # Arguments
+    /// 
+    /// * `file_path` - The file path to the debug file
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// /*
+    ///     "debug_file" content:
+    ///     ***
+    ///     *X*
+    ///     ***
+    ///  */
+    /// let grid = Grid::from_debug_file("./path/to/debug_file");
+    /// ```
     pub fn from_debug_file(file_path: &str) -> Self {
         let contents = fs::read_to_string(file_path).expect("error: cannot open file");
 
         Grid::from_debug_str(&contents)
     }
 
+    /// Save the grid into a debug file
+    /// 
+    /// # Arguments
+    /// 
+    /// * `file_path` - The file path to save
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// let grid = Grid::make_empty();
+    /// 
+    /// grid.to_debug_file("path/to/debug_file");
+    /// ```
     pub fn to_debug_file(&self, file_path: &str) {
         let mut file = fs::File::create(file_path).unwrap();
 
         writeln!(file, "{}", self.to_debug_str()).unwrap();
     }
 
+    /// Returns the grid into the minesweeper debug string format
     pub fn to_debug_str(&self) -> String {
         let mut str = String::new();
 
