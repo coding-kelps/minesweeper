@@ -1,32 +1,65 @@
-enum Status {
+use std::fmt;
+
+#[derive(Clone)]
+pub enum Status {
     Nothing,
     Mine,
     NearBomb(u8),
 }
 
-struct Cell {
+#[derive(Clone)]
+pub struct Cell {
     status: Status,
     discovered: bool,
 }
 
 pub struct Grid {
     grid: Vec<Vec<Cell>>,
-    dimensions: (u8, u8),
+    dimensions: (usize, usize),
 }
 
-use std::fmt;
+static STANDARD_DIMENSIONS: (usize, usize) = (10usize, 10usize);
 
 impl Grid {
-    fn new() -> Self {
+    pub fn new() -> Self {
+        let mut rows: Vec<Vec<Cell>> = Vec::new();
+
+        for _ in 0..STANDARD_DIMENSIONS.0 {
+            rows.push(vec![
+                Cell {
+                    status: Status::Nothing,
+                    discovered: false
+                };
+                STANDARD_DIMENSIONS.1
+            ]);
+        }
+
+        Grid {
+            grid: rows,
+            dimensions: STANDARD_DIMENSIONS,
+        }
     }
 }
 
-// impl From<String> for Grid {
-//     fn from(s: String) -> Self {
-//     }
-// }
-
-// impl fmt::Display for Grid {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//     }
-// }
+impl fmt::Display for Grid {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for row in &self.grid {
+            for cell in row {
+                let status_print = match cell.discovered {
+                    false => "#",
+                    true => match cell.status {
+                        Status::Nothing => " ",
+                        Status::Mine => "!",
+                        Status::NearBomb(nb_bombs) => match nb_bombs {
+                            1..=9 => nb_bombs.to_string().as_str(),
+                            _ => "?",
+                        },
+                    },
+                };
+                write!(f, "{}", status_print)?;
+            }
+            write!(f, "\n")?;
+        }
+        Ok(())
+    }
+}
