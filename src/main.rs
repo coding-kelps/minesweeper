@@ -1,7 +1,7 @@
 mod grid;
 
 fn main() {
-    let grid = grid::Grid::new();
+    let grid = grid::Grid::make_empty();
 
-    println!("{:?}", grid);
+    println!("{}", grid.to_debug_str());
 }

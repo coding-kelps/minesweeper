@@ -21,54 +21,61 @@ pub struct Grid {
 static STANDARD_DIMENSIONS: (usize, usize) = (10usize, 10usize);
 
 impl Grid {
-    pub fn new() -> Self {
-        let mut rows: Vec<Vec<Cell>> = Vec::new();
-
-        for _ in 0..STANDARD_DIMENSIONS.0 {
-            rows.push(vec![
-                Cell {
-                    status: Status::Nothing,
-                    discovered: false
-                };
-                STANDARD_DIMENSIONS.1
-            ]);
-        }
-
+    pub fn make_empty() -> Self {
         Grid {
-            grid: rows,
+            grid: vec![
+                vec![
+                    Cell {
+                        status: Status::Nothing,
+                        discovered: false
+                    };
+                    STANDARD_DIMENSIONS.1
+                ];
+                STANDARD_DIMENSIONS.0
+            ],
             dimensions: STANDARD_DIMENSIONS,
         }
+    }
+
+    pub fn to_debug_str(self) -> String {
+        let mut str = String::new();
+
+        for row in &self.grid {
+            for cell in row {
+                match cell.status {
+                    Status::Nothing => str.push_str(" "),
+                    Status::Mine => str.push_str("X"),
+                    Status::NearBomb(nb_bombs) => match nb_bombs {
+                        1..=9 => str.push_str(&nb_bombs.to_string()),
+                        _ => str.push_str("?"),
+                    },
+                };
+            }
+            str.push_str("\n");
+        }
+        str
     }
 }
 
 impl fmt::Display for Grid {
-    fn fmt(&self, fd: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.grid.iter().map(|col| {
-            col.iter().map(|cell| {
-                if (cell.discovered) {
-
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for row in &self.grid {
+            for cell in row {
+                if cell.discovered {
+                    match cell.status {
+                        Status::Nothing => write!(f, " ")?,
+                        Status::Mine => write!(f, "X")?,
+                        Status::NearBomb(nb_bombs) => match nb_bombs {
+                            1..=9 => write!(f, "{}", nb_bombs)?,
+                            _ => write!(f, "?")?,
+                        },
+                    };
                 } else {
-                    // write!(fd, "#")?;
+                    write!(f, "#")?;
                 }
-            });
-        });
-        // for row in &self.grid {
-        //     for cell in row {
-        //         let status_print = match cell.discovered {
-        //             false => "#",
-        //             true => match cell.status {
-        //                 Status::Nothing => " ",
-        //                 Status::Mine => "!",
-        //                 Status::NearBomb(nb_bombs) => match nb_bombs {
-        //                     // 1..=9 => nb_bombs.to_string().as_str(),
-        //                     _ => "?",
-        //                 },
-        //             },
-        //         };
-        //         write!(f, "{}", status_print)?;
-        //     }
-        //     write!(f, "\n")?;
-        // }
+            }
+            write!(f, "\n")?;
+        }
         Ok(())
     }
 }
