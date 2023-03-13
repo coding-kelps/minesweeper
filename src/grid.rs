@@ -1,15 +1,17 @@
 use rand::Rng;
 use std::fmt;
+use std::fs;
+use std::io::Write;
 
 mod cell {
-    #[derive(Clone, PartialEq)]
+    #[derive(Copy, Clone, PartialEq, Debug)]
     pub enum Status {
         Nothing,
         Mine,
         NearMine(u8),
     }
 
-    #[derive(Clone)]
+    #[derive(Copy, Clone, PartialEq, Debug)]
     pub struct Cell {
         pub status: Status,
         pub discovered: bool,
@@ -25,18 +27,19 @@ mod cell {
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Grid {
-    rows: Vec<Vec<cell::Cell>>,
     dimensions: (usize, usize),
+    rows: Vec<Vec<cell::Cell>>,
 }
 
 static STANDARD_DIMENSIONS: (usize, usize) = (10usize, 10usize);
 
 impl Grid {
-    fn make_empty() -> Self {
+    pub fn make_empty() -> Self {
         Grid {
-            rows: vec![vec![cell::Cell::new(); STANDARD_DIMENSIONS.1]; STANDARD_DIMENSIONS.0],
             dimensions: STANDARD_DIMENSIONS,
+            rows: vec![vec![cell::Cell::new(); STANDARD_DIMENSIONS.1]; STANDARD_DIMENSIONS.0],
         }
     }
 
@@ -107,21 +110,79 @@ impl Grid {
         grid
     }
 
-    pub fn to_debug_str(self) -> String {
+    pub fn from_debug_str(str: &str) -> Self {
+        let mut dimensions = (0usize, 0usize);
+        let mut rows: Vec<Vec<cell::Cell>> = Vec::new();
+        let mut row: Vec<cell::Cell> = Vec::new();
+
+        for c in str.chars() {
+            match c {
+                'X' => row.push(cell::Cell {
+                    status: cell::Status::Mine,
+                    discovered: false,
+                }),
+                '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' => {
+                    let nb_mines = c.to_digit(10).unwrap() as u8;
+
+                    row.push(cell::Cell {
+                        status: cell::Status::NearMine(nb_mines),
+                        discovered: false,
+                    });
+                }
+                '\n' => {
+                    if row.len() > dimensions.1 {
+                        dimensions.1 = row.len();
+                    }
+                    if row.len() > 0 {
+                        rows.push(row.clone());
+                        row.clear();
+                    }
+                }
+                '*' | _ => row.push(cell::Cell {
+                    status: cell::Status::Nothing,
+                    discovered: false,
+                }),
+            }
+        }
+        if row.len() > 0 {
+            rows.push(row.clone());
+        }
+        dimensions.0 = rows.len();
+        Grid {
+            dimensions: dimensions,
+            rows: rows,
+        }
+    }
+
+    pub fn from_debug_file(file_path: &str) -> Self {
+        let contents = fs::read_to_string(file_path).expect("error: cannot open file");
+
+        Grid::from_debug_str(&contents)
+    }
+
+    pub fn to_debug_file(&self, file_path: &str) {
+        let mut file = fs::File::create(file_path).unwrap();
+
+        writeln!(file, "{}", self.to_debug_str()).unwrap();
+    }
+
+    pub fn to_debug_str(&self) -> String {
         let mut str = String::new();
 
-        for row in &self.rows {
+        for (x, row) in self.rows.iter().enumerate() {
             for cell in row {
                 match cell.status {
-                    cell::Status::Nothing => str.push_str(" "),
+                    cell::Status::Nothing => str.push_str("*"),
                     cell::Status::Mine => str.push_str("X"),
-                    cell::Status::NearMine(nb_bombs) => match nb_bombs {
-                        1..=9 => str.push_str(&nb_bombs.to_string()),
+                    cell::Status::NearMine(nb_mines) => match nb_mines {
+                        1..=9 => str.push_str(&nb_mines.to_string()),
                         _ => str.push_str("?"),
                     },
                 };
             }
-            str.push_str("\n");
+            if !(x == (self.dimensions.0 - 1)) {
+                str.push_str("\n");
+            }
         }
         str
     }
@@ -135,8 +196,8 @@ impl fmt::Display for Grid {
                     match cell.status {
                         cell::Status::Nothing => write!(f, " ")?,
                         cell::Status::Mine => write!(f, "X")?,
-                        cell::Status::NearMine(nb_bombs) => match nb_bombs {
-                            1..=9 => write!(f, "{}", nb_bombs)?,
+                        cell::Status::NearMine(nb_mines) => match nb_mines {
+                            1..=9 => write!(f, "{}", nb_mines)?,
                             _ => write!(f, "?")?,
                         },
                     };
@@ -147,5 +208,148 @@ impl fmt::Display for Grid {
             write!(f, "\n")?;
         }
         Ok(())
+    }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_debug_file_empty() {
+        let grid_ref = Grid::make_empty();
+        let grid_cmp = Grid::from_debug_file("./config/grid/debug/without_hints/empty");
+
+        assert_eq!(grid_ref, grid_cmp);
+    }
+
+    #[test]
+    fn test_from_debug_file_empty_with_final_break_line() {
+        let grid_ref = Grid::make_empty();
+        let grid_cmp =
+            Grid::from_debug_file("./config/grid/debug/without_hints/empty_with_final_break_line");
+
+        assert_eq!(grid_ref, grid_cmp);
+    }
+
+    #[test]
+    fn test_from_debug_file_empty_with_hole_lines() {
+        let grid_ref = Grid::make_empty();
+        let grid_cmp =
+            Grid::from_debug_file("./config/grid/debug/without_hints/empty_with_hole_lines");
+
+        assert_eq!(grid_ref, grid_cmp);
+    }
+
+    #[test]
+    fn test_from_debug_str_empty() {
+        let grid_ref = Grid::from_debug_file("./config/grid/debug/without_hints/empty");
+        let debug_str = "\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                            ";
+        let grid_cmp = Grid::from_debug_str(debug_str);
+
+        assert_eq!(grid_ref, grid_cmp);
+    }
+
+    #[test]
+    fn test_from_debug_str_many_mines() {
+        let grid_ref = Grid::from_debug_file("./config/grid/debug/without_hints/many_mines");
+        let debug_str = "\
+                                **********\n\
+                                *X********\n\
+                                **********\n\
+                                *****X****\n\
+                                ****X*X***\n\
+                                *****X****\n\
+                                ******X***\n\
+                                **********\n\
+                                X*********\n\
+                                XXX*******\n\
+                            ";
+        let grid_cmp = Grid::from_debug_str(debug_str);
+
+        assert_eq!(grid_ref, grid_cmp);
+    }
+
+    #[test]
+    fn test_count_near_mines_one() {
+        // grid with mine in position 5,4
+        let debug_str = "\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                ****X*****\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                            ";
+        let grid = Grid::from_debug_str(debug_str);
+
+        let nb_mines = grid.count_near_mines((5, 5));
+        assert_eq!(1, nb_mines);
+    }
+
+    #[test]
+    fn test_count_near_mines_many() {
+        // grid with mines in position 6,4; 4,4; 6,6; 6, 5
+        let debug_str = "\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                                ****X*****\n\
+                                **********\n\
+                                ****XXX***\n\
+                                **********\n\
+                                **********\n\
+                                **********\n\
+                            ";
+        let grid = Grid::from_debug_str(debug_str);
+
+        let nb_mines = grid.count_near_mines((5, 5));
+        assert_eq!(4, nb_mines);
+    }
+
+    #[test]
+    fn test_generates_hints_one_mine() {
+        let grid_ref = Grid::from_debug_file("./config/grid/debug/with_hints/one_mine");
+        let mut grid_cmp =
+            Grid::from_debug_file("./config/grid/debug/without_hints/one_mine");
+
+        grid_cmp.generate_hints();
+        assert_eq!(grid_ref, grid_cmp);
+    }
+
+    #[test]
+    fn test_generates_hints_corner_mines() {
+        let grid_ref = Grid::from_debug_file("./config/grid/debug/with_hints/corner_mines");
+        let mut grid_cmp =
+            Grid::from_debug_file("./config/grid/debug/without_hints/corner_mines");
+
+        grid_cmp.generate_hints();
+        assert_eq!(grid_ref, grid_cmp);
+    }
+
+    #[test]
+    fn test_generates_hints_many_mines() {
+        let grid_ref = Grid::from_debug_file("./config/grid/debug/with_hints/many_mines");
+        let mut grid_cmp =
+            Grid::from_debug_file("./config/grid/debug/without_hints/many_mines");
+
+        grid_cmp.generate_hints();
+        println!("{}", grid_cmp.to_debug_str());
+        assert_eq!(grid_ref, grid_cmp);
     }
 }
