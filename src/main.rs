@@ -1,3 +1,7 @@
+mod grid;
+
 fn main() {
-    println!("Hello, world!");
+    let grid = grid::Grid::make_random();
+
+    println!("{}", grid);
 }
