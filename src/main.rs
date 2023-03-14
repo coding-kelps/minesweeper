@@ -1,7 +1,4 @@
-mod grid;
+mod minesweeper;
 
 fn main() {
-    let grid = grid::Grid::make_random();
-
-    println!("{}", grid);
 }
